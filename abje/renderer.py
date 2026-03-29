@@ -1,12 +1,14 @@
 """视频渲染器"""
 
 import os
+import time
 
 import cv2
 import imageio
 import numpy as np
 
 from .config import Config, NoteDuration
+from .logger import format_duration, logger, setup_logger
 from .wave import Wave
 
 
@@ -16,6 +18,7 @@ class Renderer:
     def __init__(self, config: Config | None = None):
         self.config = config or Config()
         self.waves: list[Wave] = []
+        setup_logger()
     
     def add_wave(self, wave: Wave) -> None:
         """添加单个波纹"""
@@ -98,7 +101,10 @@ class Renderer:
         
         writer = self._get_writer(output_path, fps)
         
-        print("Start rendering...")
+        logger.info(f"Start rendering: {output_path}")
+        logger.info(f"Resolution: {width}x{height}, FPS: {fps}, Frames: {total_frames}")
+        
+        start_time = time.perf_counter()
         
         # 在循环外预分配内存
         canvas_rgba = np.zeros((height, width, 4), dtype=np.float32)
@@ -144,7 +150,11 @@ class Renderer:
             writer.append_data(frame_out)
             
             if frame_idx % 20 == 0:
-                print(f"Frame: {frame_idx} / {total_frames}")
+                logger.info(f"Frame: {frame_idx} / {total_frames}")
         
         writer.close()
-        print(f"Render {output_path} Done")
+        elapsed = time.perf_counter() - start_time
+        fps_render = total_frames / elapsed if elapsed > 0 else 0
+        logger.info(f"Render done: {output_path}")
+        logger.info(f"\tTotal time: {format_duration(elapsed)}")
+        logger.info(f"\tSpeed: {fps_render:.1f} fps")

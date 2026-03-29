@@ -21,8 +21,7 @@ class RenderConfig:
     fps: int = 30
     output_dir: str = "output"
     output_name: str = "iriya"
-    format: str = "mov"  # "mov" 或 "mp4"
-
+    format: str = "mp4"  # "mov" 或 "mp4"
 
 @dataclass
 class ContentConfig:

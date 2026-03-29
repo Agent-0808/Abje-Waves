@@ -8,7 +8,7 @@ def main():
             height=720,
             fps=30,
             output_name="iriya",
-            format="mov",
+            format="mp4",
         ),
         content=ContentConfig(bpm=90),
     )
