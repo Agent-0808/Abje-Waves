@@ -54,9 +54,8 @@ class Renderer:
         """根据所有波纹计算总帧数"""
         if not self.waves:
             return 0
-        last_time = max(w.time_start for w in self.waves)
-        total_time = last_time + self.config.wave_duration
-        return int(total_time * self.config.fps) + 1
+        max_end_time = max(w.time_start + w.get_lifetime() for w in self.waves)
+        return int(max_end_time * self.config.fps) + 1
     
     def _get_writer(self, output_path: str, fps: int):
         """根据格式获取对应的 writer"""
@@ -70,7 +69,10 @@ class Renderer:
                 codec='prores_ks',
                 pixelformat='yuva444p10le',
                 macro_block_size=None,
-                output_params=['-profile:v', '4444']
+                output_params=[
+                    '-profile:v', '4444',
+                    '-qscale:v', '25' # 范围0-31
+                ]
             )
         elif fmt == "mp4":
             return imageio.get_writer(
@@ -81,6 +83,20 @@ class Renderer:
                 pixelformat='yuv420p',
                 macro_block_size=None,
                 output_params=['-crf', '18']
+            )
+        elif fmt == "webm":
+            return imageio.get_writer(
+                output_path,
+                fps=fps,
+                format='FFMPEG',
+                codec='libvpx-vp9',
+                pixelformat='yuva420p',
+                macro_block_size=None,
+                output_params=[
+                    '-crf', '30',        # 控制画质，数值越大文件越小(推荐20-35)
+                    '-b:v', '0',         # 必须设为0，让crf发挥作用
+                    '-auto-alt-ref', '0' # 防止透明通道闪烁或报错
+                ]
             )
         else:
             raise ValueError(f"不支持的格式: {fmt}")
@@ -126,8 +142,10 @@ class Renderer:
                 
                 radius = wave.get_radius_at_time(current_time)
                 
-                base_thickness = wave.thickness
+                core_thickness = wave.thickness
+                halo_thickness = int(core_thickness * self.config.content.halo_thickness_ratio)
                 base_color = wave.color
+                core_color = self.config.content.core_color
                 brightness = wave.brightness
                 
                 # 绘制光晕层 (较粗，使用指定颜色)
@@ -143,20 +161,25 @@ class Renderer:
                     (wave.x, wave.y),
                     int(radius),
                     color=halo_color,
-                    thickness=int(base_thickness * 3.0),
+                    thickness=max(1, halo_thickness),
                     lineType=cv2.LINE_AA 
                 )
                 halo_layer += temp_layer
                 
                 # 绘制核心层 (较细，纯白色)
                 temp_layer.fill(0)
-                core_color = (255, 255, 255, 255 * brightness)
+                core_color_with_brightness = (
+                    core_color[0] * brightness,
+                    core_color[1] * brightness,
+                    core_color[2] * brightness,
+                    255 * brightness
+                )
                 cv2.circle(
                     temp_layer,
                     (wave.x, wave.y),
                     int(radius),
-                    color=core_color,
-                    thickness=max(1, int(base_thickness * 0.6)),
+                    color=core_color_with_brightness,
+                    thickness=max(1, core_thickness),
                     lineType=cv2.LINE_AA 
                 )
                 core_layer += temp_layer

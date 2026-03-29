@@ -20,8 +20,8 @@ class RenderConfig:
     height: int = 720
     fps: int = 30
     output_dir: str = "output"
-    output_name: str = "iriya"
-    format: str = "mp4"  # "mov" 或 "mp4"
+    output_name: str = "abje"
+    format: str = "mp4"  # "mov" | "mp4" | "webm"
 
 @dataclass
 class ContentConfig:
@@ -29,8 +29,9 @@ class ContentConfig:
     bpm: int = 120
     default_speed: float = 0.3  # 屏幕宽度/秒
     max_radius_ratio: float = 1.5  # 相对屏幕宽度
-    wave_duration: float = 3.0  # 秒
     interval: NoteDuration = NoteDuration.EIGHTH
+    core_color: tuple[int, int, int] = (255, 255, 255)  # 核心线条颜色
+    halo_thickness_ratio: float = 5.0  # 光晕宽度相对核心宽度的倍数
 
 
 @dataclass
@@ -62,10 +63,6 @@ class Config:
     @property
     def max_radius_ratio(self) -> float:
         return self.content.max_radius_ratio
-
-    @property
-    def wave_duration(self) -> float:
-        return self.content.wave_duration
 
     def get_output_path(self) -> str:
         """获取完整输出路径"""
