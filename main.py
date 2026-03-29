@@ -1,12 +1,18 @@
 from abje import *
 
+
 def main():
     config = Config(
-        width=1280, height=720,
-        bpm=90, fps=30,
-        output_video="output/iriya.mov"
+        render=RenderConfig(
+            width=1280,
+            height=720,
+            fps=30,
+            output_name="iriya",
+            format="mov",
+        ),
+        content=ContentConfig(bpm=90),
     )
-    
+
     # 波纹参数编码
     texts = {
         EncodeType.SIDE: "鳥達は行方を消す",
@@ -17,9 +23,9 @@ def main():
     }
 
     params_list = texts_to_wave_params(texts)
-    
+
     renderer = Renderer(config)
-    renderer.add_wave_params(params_list, interval=NoteDuration.EIGHTH)
+    renderer.add_wave_params(params_list)
     renderer.render()
 
 

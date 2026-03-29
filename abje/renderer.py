@@ -31,10 +31,12 @@ class Renderer:
     def add_wave_params(
         self,
         params_list: list[dict],
-        interval: NoteDuration = NoteDuration.EIGHTH,
+        interval: NoteDuration | None = None,
         start_time: float = 0.0,
     ) -> None:
         """添加波纹参数列表，自动计算时间间隔"""
+        if interval is None:
+            interval = self.config.content.interval
         interval_seconds = self.config.seconds_for_duration(interval)
         for i, params in enumerate(params_list):
             wave = Wave(
@@ -53,6 +55,33 @@ class Renderer:
         total_time = last_time + self.config.wave_duration
         return int(total_time * self.config.fps) + 1
     
+    def _get_writer(self, output_path: str, fps: int):
+        """根据格式获取对应的 writer"""
+        fmt = self.config.render.format
+        
+        if fmt == "mov":
+            return imageio.get_writer(
+                output_path,
+                fps=fps,
+                format='FFMPEG',
+                codec='prores_ks',
+                pixelformat='yuva444p10le',
+                macro_block_size=None,
+                output_params=['-profile:v', '4444']
+            )
+        elif fmt == "mp4":
+            return imageio.get_writer(
+                output_path,
+                fps=fps,
+                format='FFMPEG',
+                codec='libx264',
+                pixelformat='yuv420p',
+                macro_block_size=None,
+                output_params=['-crf', '18']
+            )
+        else:
+            raise ValueError(f"不支持的格式: {fmt}")
+    
     def render(self, total_frames: int | None = None) -> None:
         """渲染视频"""
         if total_frames is None:
@@ -61,20 +90,13 @@ class Renderer:
         width, height = self.config.width, self.config.height
         max_radius = self.config.get_max_radius()
         fps = self.config.fps
+        output_path = self.config.get_output_path()
         
-        output_dir = os.path.dirname(self.config.output_video)
+        output_dir = os.path.dirname(output_path)
         if output_dir:
             os.makedirs(output_dir, exist_ok=True)
         
-        writer = imageio.get_writer(
-            self.config.output_video,
-            fps=fps,
-            format='FFMPEG',
-            codec='prores_ks',
-            pixelformat='yuva444p10le',
-            macro_block_size=None,
-            output_params=['-profile:v', '4444']
-        )
+        writer = self._get_writer(output_path, fps)
         
         print("Start rendering...")
         
@@ -125,4 +147,4 @@ class Renderer:
                 print(f"Frame: {frame_idx} / {total_frames}")
         
         writer.close()
-        print(f"Render {self.config.output_video} Done")
+        print(f"Render {output_path} Done")
