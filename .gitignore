@@ -15,5 +15,6 @@ wheels/
 .idea/
 
 # Output files
+output/
 *.mov
 *.mp4

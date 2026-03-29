@@ -108,11 +108,14 @@ class Renderer:
         
         # 在循环外预分配内存
         canvas_rgba = np.zeros((height, width, 4), dtype=np.float32)
+        halo_layer = np.zeros((height, width, 4), dtype=np.float32)
+        core_layer = np.zeros((height, width, 4), dtype=np.float32)
         temp_layer = np.zeros((height, width, 4), dtype=np.float32)
         
         for frame_idx in range(total_frames):
             current_time = frame_idx / fps
-            canvas_rgba.fill(0)
+            halo_layer.fill(0)
+            core_layer.fill(0)
             
             for wave in self.waves:
                 if wave.time_start > current_time:
@@ -121,30 +124,54 @@ class Renderer:
                 if not wave.is_alive_at_time(current_time, max_radius):
                     continue
                 
-                fade_factor = wave.get_fade_factor_at_time(current_time, max_radius)
-                if fade_factor <= 0:
-                    continue
-                
-                color_rgba = wave.get_color_with_brightness(fade_factor)
                 radius = wave.get_radius_at_time(current_time)
                 
+                base_thickness = wave.thickness
+                base_color = wave.color
+                brightness = wave.brightness
+                
+                # 绘制光晕层 (较粗，使用指定颜色)
                 temp_layer.fill(0)
-                # 画锐利的圆，并开启抗锯齿(LINE_AA)让效果更平滑
+                halo_color = (
+                    base_color[0] * brightness,
+                    base_color[1] * brightness,
+                    base_color[2] * brightness,
+                    255 * brightness
+                )
                 cv2.circle(
                     temp_layer,
                     (wave.x, wave.y),
                     int(radius),
-                    color=color_rgba,
-                    thickness=wave.thickness * 2,
+                    color=halo_color,
+                    thickness=int(base_thickness * 3.0),
                     lineType=cv2.LINE_AA 
                 )
+                halo_layer += temp_layer
                 
-                # 先做加法混合，不在这里做模糊
-                canvas_rgba += temp_layer
+                # 绘制核心层 (较细，纯白色)
+                temp_layer.fill(0)
+                core_color = (255, 255, 255, 255 * brightness)
+                cv2.circle(
+                    temp_layer,
+                    (wave.x, wave.y),
+                    int(radius),
+                    color=core_color,
+                    thickness=max(1, int(base_thickness * 0.6)),
+                    lineType=cv2.LINE_AA 
+                )
+                core_layer += temp_layer
             
-            # 每帧只做一次模糊
-            if np.any(canvas_rgba): 
-                cv2.GaussianBlur(canvas_rgba, (31, 31), 0, dst=canvas_rgba)
+            # 对光晕层进行高斯模糊，形成平滑的渐变过渡
+            if np.any(halo_layer):
+                # 使用较大的 sigmaX 自动计算合适的核大小，实现大范围的柔和光晕
+                cv2.GaussianBlur(halo_layer, (0, 0), sigmaX=15.0, dst=halo_layer)
+            
+            # 合并光晕层和核心层
+            canvas_rgba = halo_layer + core_layer
+            
+            # 对最终画面进行轻微模糊，使核心边缘不那么生硬
+            if np.any(canvas_rgba):
+                cv2.GaussianBlur(canvas_rgba, (3, 3), 0, dst=canvas_rgba)
 
             frame_out = np.clip(canvas_rgba, 0, 255).astype(np.uint8)
             writer.append_data(frame_out)
