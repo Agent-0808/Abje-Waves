@@ -1,5 +1,7 @@
 """视频渲染器"""
 
+import os
+
 import cv2
 import imageio
 import numpy as np
@@ -60,6 +62,10 @@ class Renderer:
         max_radius = self.config.get_max_radius()
         fps = self.config.fps
         
+        output_dir = os.path.dirname(self.config.output_video)
+        if output_dir:
+            os.makedirs(output_dir, exist_ok=True)
+        
         writer = imageio.get_writer(
             self.config.output_video,
             fps=fps,
@@ -72,9 +78,13 @@ class Renderer:
         
         print("Start rendering...")
         
+        # 在循环外预分配内存
+        canvas_rgba = np.zeros((height, width, 4), dtype=np.float32)
+        temp_layer = np.zeros((height, width, 4), dtype=np.float32)
+        
         for frame_idx in range(total_frames):
             current_time = frame_idx / fps
-            canvas_rgba = np.zeros((height, width, 4), dtype=np.float32)
+            canvas_rgba.fill(0)
             
             for wave in self.waves:
                 if wave.time_start > current_time:
@@ -84,25 +94,30 @@ class Renderer:
                     continue
                 
                 fade_factor = wave.get_fade_factor_at_time(current_time, max_radius)
-                
                 if fade_factor <= 0:
                     continue
                 
                 color_rgba = wave.get_color_with_brightness(fade_factor)
                 radius = wave.get_radius_at_time(current_time)
                 
-                temp_layer = np.zeros((height, width, 4), dtype=np.float32)
+                temp_layer.fill(0)
+                # 画锐利的圆，并开启抗锯齿(LINE_AA)让效果更平滑
                 cv2.circle(
                     temp_layer,
                     (wave.x, wave.y),
                     int(radius),
                     color=color_rgba,
                     thickness=wave.thickness * 2,
+                    lineType=cv2.LINE_AA 
                 )
                 
-                temp_layer = cv2.GaussianBlur(temp_layer, (31, 31), 0)
+                # 先做加法混合，不在这里做模糊
                 canvas_rgba += temp_layer
             
+            # 每帧只做一次模糊
+            if np.any(canvas_rgba): 
+                cv2.GaussianBlur(canvas_rgba, (31, 31), 0, dst=canvas_rgba)
+
             frame_out = np.clip(canvas_rgba, 0, 255).astype(np.uint8)
             writer.append_data(frame_out)
             

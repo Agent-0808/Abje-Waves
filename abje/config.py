@@ -19,13 +19,12 @@ class Config:
     width: int = 1920
     height: int = 1080
     fps: int = 60
-    output_video: str = "Abje_waves.mov"
+    output_video: str = "output/Abje_waves.mov"
     
     bpm: int = 120
     
-    default_speed: float = 0.286  # 屏幕宽度/秒 (约3.5秒穿过屏幕)
-    default_color: tuple[int, int, int] = (100, 150, 255)
-    default_thickness: int = 3
+    default_speed: float = 0.3  # 屏幕宽度/秒
+    default_color: tuple[int, int, int] = (70, 85, 254)
     max_radius_ratio: float = 1.5  # 相对屏幕宽度
     
     wave_duration: float = 3.0  # 秒

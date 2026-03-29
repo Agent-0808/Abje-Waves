@@ -4,7 +4,7 @@ def main():
     config = Config(
         width=1280, height=720,
         bpm=90, fps=30,
-        output_video="iriya.mov"
+        output_video="output/iriya.mov"
     )
     
     # 波纹参数编码
