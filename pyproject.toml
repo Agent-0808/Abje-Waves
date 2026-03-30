@@ -1,7 +1,7 @@
 [project]
-name = "drawing"
-version = "0.1.0"
-description = "Add your description here"
+name = "Abje-Waves"
+version = "0.8.0"
+description = "渲染アブジェ中的波纹"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
