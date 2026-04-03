@@ -1,6 +1,8 @@
 """编码转换功能"""
 
+from dataclasses import dataclass
 from enum import Enum
+from typing import Callable, TypeAlias
 
 
 class EncodeType(Enum):
@@ -10,6 +12,32 @@ class EncodeType(Enum):
     SPEED = "speed"             # [遅:0/速:1] → 波纹速度
     BRIGHTNESS = "brightness"   # [暗:0/明:1] → 波纹亮度
     VERTICAL = "vertical"       # [下:0/上:1] → 垂直位置
+
+
+# 类型别名：文本输入源（字符串、二进制流、或带编码函数的元组）
+TextSource: TypeAlias = str | list[int] | tuple[str, Callable[[str], list[int]]]
+
+
+def _to_bits(value: TextSource, encoding: str = "euc-jp") -> list[int]:
+    """统一转换为二进制流"""
+    if isinstance(value, list):
+        return value  # 直接是二进制流
+    if isinstance(value, tuple):
+        text, encoder = value
+        return encoder(text)  # 使用自定义编码函数
+    # 普通字符串，使用默认编码
+    return encode_to_binary(value, encoding)
+
+
+@dataclass
+class WaveCodes:
+    """波纹编码配置类"""
+
+    side: TextSource | None = None
+    color: TextSource | None = None
+    speed: TextSource | None = None
+    brightness: TextSource | None = None
+    vertical: TextSource | None = None
 
 
 ENCODE_MAPPINGS: dict[EncodeType, dict[int, dict]] = {
@@ -70,17 +98,23 @@ def merge_wave_params(params_list: list[list[dict]]) -> list[dict]:
     return merged
 
 
-def texts_to_wave_params(
-    texts: dict[EncodeType, str],
-    encoding: str = "euc-jp"
-) -> list[dict]:
-    """
-    将多个文本编码转换为合并后的波纹参数列表
-    """
+def codes_to_wave_params(texts: WaveCodes, encoding: str = "euc-jp") -> list[dict]:
+    """将波纹编码配置转换为合并后的波纹参数列表"""
+
+    fields = {
+        EncodeType.SIDE: texts.side,
+        EncodeType.COLOR: texts.color,
+        EncodeType.SPEED: texts.speed,
+        EncodeType.BRIGHTNESS: texts.brightness,
+        EncodeType.VERTICAL: texts.vertical,
+    }
+
     all_params = []
-    for encode_type, text in texts.items():
-        bits = encode_to_binary(text, encoding)
+    for encode_type, value in fields.items():
+        if value is None:
+            continue
+        bits = _to_bits(value, encoding)
         params = binary_to_wave_params(bits, encode_type)
         all_params.append(params)
-    
+
     return merge_wave_params(all_params)
