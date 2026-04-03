@@ -8,7 +8,7 @@ from .config import Config
 @dataclass
 class Wave:
     """单个波纹"""
-    side: str                                      # "left" 或 "right"
+    side: float                                    # 0.0=左, 1.0=右
     time_start: float = 0.0                        # 开始时间 (秒)
     speed_factor: float = 1.0                      # 速度系数 (相对于基准速度)
     color: tuple[int, int, int] = (100, 150, 255)  # RGB 颜色
@@ -21,7 +21,7 @@ class Wave:
     _y: int = field(default=0, init=False, repr=False)
     
     def __post_init__(self):
-        self._x = 0 if self.side == "left" else self._config.width
+        self._x = int(self._config.width * self.side)
         self._y = int(self._config.height * (1 - self.vertical_pos))
     
     @property

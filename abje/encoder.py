@@ -14,8 +14,8 @@ class EncodeType(Enum):
 
 ENCODE_MAPPINGS: dict[EncodeType, dict[int, dict]] = {
     EncodeType.SIDE: {
-        0: {"side": "left"},
-        1: {"side": "right"},
+        0: {"side": 0.0},
+        1: {"side": 1.0},
     },
     EncodeType.COLOR: {
         0: {"color": (100, 200, 255)},
